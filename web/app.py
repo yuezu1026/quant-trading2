@@ -127,6 +127,25 @@ async def index():
         </div>
     </div>
 
+    <div class="grid" id="backtest_cards" style="padding-top:0;">
+        <div class="card">
+            <h3>📈 回测年化收益</h3>
+            <div class="value" id="bt_annual" style="font-size:22px;">--</div>
+        </div>
+        <div class="card">
+            <h3>📊 夏普比率</h3>
+            <div class="value" id="bt_sharpe" style="font-size:22px;">--</div>
+        </div>
+        <div class="card">
+            <h3>📉 最大回撤</h3>
+            <div class="value" id="bt_drawdown" style="font-size:22px;">--</div>
+        </div>
+        <div class="card">
+            <h3>🏆 胜率</h3>
+            <div class="value" id="bt_winrate" style="font-size:22px;">--</div>
+        </div>
+    </div>
+
     <div class="chart-container">
         <h3>资产曲线</h3>
         <div class="chart" id="equity_chart"></div>
@@ -201,6 +220,43 @@ async def index():
         }
         loadConfig();
         setInterval(loadConfig, 30000);
+
+        // 加载回测摘要
+        async function loadBacktest() {
+            try {
+                const res = await fetch('/api/dashboard/backtest_summary');
+                const json = await res.json();
+                if (json.status === 'ok' && json.data) {
+                    const d = json.data;
+                    const fmtPct = (v) => (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+                    document.getElementById('bt_annual').innerText = fmtPct(d.annual_return);
+                    document.getElementById('bt_annual').className = 'value ' + (d.annual_return >= 0 ? 'positive' : 'negative');
+                    document.getElementById('bt_sharpe').innerText = d.sharpe_ratio.toFixed(2);
+                    document.getElementById('bt_sharpe').className = 'value ' + (d.sharpe_ratio >= 0 ? 'positive' : 'negative');
+                    document.getElementById('bt_drawdown').innerText = (d.max_drawdown * 100).toFixed(1) + '%';
+                    document.getElementById('bt_drawdown').className = 'value negative';
+                    document.getElementById('bt_winrate').innerText = (d.win_rate * 100).toFixed(1) + '%';
+                    // 更新图表
+                    if (d.equity_curve && d.equity_curve.length > 0) {
+                        const btDates = d.equity_curve.map(p => p.date);
+                        const btValues = d.equity_curve.map(p => p.asset);
+                        chart.setOption({
+                            xAxis: { data: btDates },
+                            series: [{
+                                name: '回测资产',
+                                data: btValues,
+                                type: 'line',
+                                smooth: true,
+                                lineStyle: { color: '#a78bfa', width: 2 },
+                                areaStyle: { color: 'rgba(167,139,250,0.15)' },
+                                showSymbol: false,
+                            }]
+                        });
+                    }
+                }
+            } catch(e) {}
+        }
+        loadBacktest();
 
         // WebSocket 连接
         const ws = new WebSocket(`ws://${location.host}/api/dashboard/ws`);

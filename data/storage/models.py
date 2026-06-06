@@ -81,6 +81,26 @@ class StockInfo(Base):
     is_st = Column(Boolean, default=False, comment="是否ST")
 
 
+class BacktestRun(Base):
+    """回测结果持久化"""
+    __tablename__ = "quant_backtest_run"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    strategy_name = Column(String(50), nullable=False, comment="策略名称")
+    codes = Column(String(200), nullable=False, comment="股票代码(逗号分隔)")
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    total_return = Column(Float, default=0.0, comment="总收益率")
+    annual_return = Column(Float, default=0.0, comment="年化收益率")
+    sharpe_ratio = Column(Float, default=0.0)
+    max_drawdown = Column(Float, default=0.0)
+    volatility = Column(Float, default=0.0)
+    trade_count = Column(Integer, default=0)
+    win_rate = Column(Float, default=0.0)
+    equity_curve = Column(String, default="[]", comment="资产曲线JSON")
+    created_at = Column(Date, nullable=False)
+
+
 class TradeRecord(Base):
     """交易记录（回测/实盘共用）"""
     __tablename__ = "quant_trade_record"

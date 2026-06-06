@@ -207,6 +207,135 @@ def get_simulator() -> DashboardSimulator:
 def start_simulator():
     sim = get_simulator()
     sim.start()
+    # 后台运行默认回测
+    t = threading.Thread(target=_run_default_backtest, daemon=True)
+    t.start()
+
+
+# ============================================================================
+# 回测结果缓存
+# ============================================================================
+
+_backtest_summary: dict | None = None
+
+
+def _run_default_backtest():
+    """后台运行默认回测，使用 Mock 数据，结果存入数据库"""
+    global _backtest_summary
+    try:
+        import json
+        import random
+        from datetime import date, timedelta
+
+        from strategy import MACrossStrategy, StrategyWrapper
+        from backtest import BacktestEngine, Analyzer
+
+        codes = ["600036.SH"]
+        end = date.today()
+        start = end - timedelta(days=730)
+
+        # ---- 生成 Mock K线数据 ----
+        rng = random.Random(42)
+        base_price = 35.0
+        trading_days = []
+        d = start
+        while d <= end:
+            if d.weekday() < 5:
+                trading_days.append(d)
+            d += timedelta(days=1)
+
+        rows = []
+        price = base_price
+        for dt in trading_days:
+            change = rng.gauss(0.0002, 0.02)
+            close = price * (1 + change)
+            close = max(close, price * 0.5)
+            open_p = price * (1 + rng.gauss(0, 0.005))
+            high = max(open_p, close) * (1 + abs(rng.gauss(0, 0.008)))
+            low = min(open_p, close) * (1 - abs(rng.gauss(0, 0.008)))
+            vol = int(abs(rng.gauss(50_000_000, 20_000_000)))
+            rows.append({
+                "code": codes[0], "date": dt,
+                "open": round(open_p, 2), "high": round(high, 2),
+                "low": round(low, 2), "close": round(close, 2),
+                "volume": vol, "amount": round(close * vol, 2),
+            })
+            price = close
+
+        import pandas as pd
+        mock_df = pd.DataFrame(rows)
+
+        class MockProvider:
+            name = "mock"
+            def get_daily(self, code, start, end, adjust="qfq"):
+                df = mock_df[(mock_df["date"] >= start) & (mock_df["date"] <= end)]
+                return df.sort_values("date").reset_index(drop=True)
+            def get_minute(self, code, date_, freq="1"):
+                return pd.DataFrame()
+            def get_stock_info(self, code):
+                return {"code": code, "name": "测试股票"}
+            def get_stock_list(self):
+                return pd.DataFrame()
+
+        # ---- 运行回测 ----
+        strategy = MACrossStrategy(fast_period=5, slow_period=20)
+        wrapper = StrategyWrapper(strategy)
+        engine = BacktestEngine(strategy=wrapper, data_provider=MockProvider(), initial_cash=100_000.0)
+        recorder = engine.run(codes=codes, start=start, end=end)
+        stats = Analyzer.analyze(recorder)
+
+        daily_df = recorder.to_daily_df()
+        equity_curve = []
+        if not daily_df.empty:
+            equity_curve = [
+                {"date": str(row["date"]), "asset": round(row["total_asset"], 2)}
+                for _, row in daily_df.tail(90).iterrows()
+            ]
+
+        summary = {
+            "strategy": "MA_Cross_5_20",
+            "codes": codes,
+            "start_date": str(start),
+            "end_date": str(end),
+            "total_return": round(stats.total_return, 4),
+            "annual_return": round(stats.annual_return, 4),
+            "sharpe_ratio": round(stats.sharpe_ratio, 2),
+            "max_drawdown": round(stats.max_drawdown, 4),
+            "volatility": round(stats.volatility, 4),
+            "trade_count": stats.trade_count,
+            "win_rate": round(stats.win_rate, 4),
+            "equity_curve": equity_curve,
+        }
+
+        # ---- 存入数据库 ----
+        try:
+            import os
+            db_url = os.environ.get("DATABASE_URL", "sqlite:///quant.db")
+            from data.storage.repository import Repository
+            repo = Repository(db_url)
+            repo.save_backtest({
+                "strategy_name": "MA_Cross_5_20",
+                "codes": ",".join(codes),
+                "start_date": start,
+                "end_date": end,
+                "total_return": stats.total_return,
+                "annual_return": stats.annual_return,
+                "sharpe_ratio": stats.sharpe_ratio,
+                "max_drawdown": stats.max_drawdown,
+                "volatility": stats.volatility,
+                "trade_count": stats.trade_count,
+                "win_rate": stats.win_rate,
+                "equity_curve": json.dumps(equity_curve),
+                "created_at": date.today(),
+            })
+            logger.info("回测结果已存入数据库")
+        except Exception as e:
+            logger.warning(f"回测结果存库失败(不影响内存缓存): {e}")
+
+        _backtest_summary = summary
+        logger.info("默认回测完成")
+    except Exception as e:
+        logger.warning(f"默认回测失败: {e}")
 
 
 # ============================================================================
@@ -302,6 +431,42 @@ async def get_config() -> dict:
         "environment": "docker" if in_docker else "local",
         "strategies": strategies,
     }
+
+
+@router.get("/backtest_summary")
+async def get_backtest_summary() -> dict:
+    """获取最近一次回测的摘要指标"""
+    # 优先内存缓存
+    if _backtest_summary:
+        return {"status": "ok", "data": _backtest_summary}
+    # 回退到数据库
+    try:
+        import os
+        db_url = os.environ.get("DATABASE_URL", "sqlite:///quant.db")
+        from data.storage.repository import Repository
+        repo = Repository(db_url)
+        rows = repo.get_latest_backtests(limit=1)
+        if rows:
+            r = rows[0]
+            import json as _json
+            ec = _json.loads(r["equity_curve"]) if isinstance(r["equity_curve"], str) else r["equity_curve"]
+            return {"status": "ok", "data": {
+                "strategy": r["strategy_name"],
+                "codes": r["codes"].split(","),
+                "start_date": r["start_date"],
+                "end_date": r["end_date"],
+                "total_return": r["total_return"],
+                "annual_return": r["annual_return"],
+                "sharpe_ratio": r["sharpe_ratio"],
+                "max_drawdown": r["max_drawdown"],
+                "volatility": r["volatility"],
+                "trade_count": r["trade_count"],
+                "win_rate": r["win_rate"],
+                "equity_curve": ec,
+            }}
+    except Exception as e:
+        logger.warning(f"从DB读取回测失败: {e}")
+    return {"status": "pending", "data": None}
 
 
 @router.get("/overview")

@@ -12,7 +12,7 @@ import pandas as pd
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import Session
 
-from .models import Base, DailyKline, StockInfo, TradeRecord
+from .models import Base, DailyKline, StockInfo, TradeRecord, BacktestRun
 
 DAILY_COLUMNS = ["code", "date", "open", "high", "low", "close", "volume", "amount"]
 
@@ -171,3 +171,38 @@ class Repository:
             "trade_time": r.trade_time,
             "signal_reason": r.signal_reason,
         } for r in rows])
+
+    # ------------------------------------------------------------------
+    # 回测结果
+    # ------------------------------------------------------------------
+
+    def save_backtest(self, data: dict) -> int:
+        """保存回测结果，返回记录ID"""
+        with Session(self._engine) as session:
+            run = BacktestRun(**data)
+            session.add(run)
+            session.commit()
+            return run.id
+
+    def get_latest_backtests(self, limit: int = 5) -> list[dict]:
+        """获取最近的回测结果"""
+        with Session(self._engine) as session:
+            rows = session.query(BacktestRun).order_by(
+                BacktestRun.created_at.desc()
+            ).limit(limit).all()
+        return [{
+            "id": r.id,
+            "strategy_name": r.strategy_name,
+            "codes": r.codes,
+            "start_date": str(r.start_date),
+            "end_date": str(r.end_date),
+            "total_return": r.total_return,
+            "annual_return": r.annual_return,
+            "sharpe_ratio": r.sharpe_ratio,
+            "max_drawdown": r.max_drawdown,
+            "volatility": r.volatility,
+            "trade_count": r.trade_count,
+            "win_rate": r.win_rate,
+            "equity_curve": r.equity_curve,
+            "created_at": str(r.created_at),
+        } for r in rows]
