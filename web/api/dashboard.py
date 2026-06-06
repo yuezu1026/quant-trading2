@@ -220,7 +220,7 @@ _backtest_summary: dict | None = None
 
 
 def _run_default_backtest():
-    """后台运行默认回测，使用 Mock 数据，结果存入数据库"""
+    """后台运行默认回测，优先 TuShare，失败则 Mock，结果存入数据库"""
     global _backtest_summary
     try:
         import json
@@ -233,54 +233,73 @@ def _run_default_backtest():
         codes = ["600036.SH"]
         end = date.today()
         start = end - timedelta(days=730)
+        data_source_used = "mock"
 
-        # ---- 生成 Mock K线数据 ----
-        rng = random.Random(42)
-        base_price = 35.0
-        trading_days = []
-        d = start
-        while d <= end:
-            if d.weekday() < 5:
-                trading_days.append(d)
-            d += timedelta(days=1)
+        # ---- 尝试 TuShare 数据源 ----
+        provider = None
+        try:
+            from data.providers.tushare import TuShareProvider, _get_token
+            token = _get_token()
+            if token:
+                tp = TuShareProvider(token)
+                test_df = tp.get_daily(codes[0], start, start + timedelta(days=5))
+                if not test_df.empty:
+                    provider = tp
+                    data_source_used = "tushare"
+                    logger.info("回测数据源: TuShare (在线)")
+        except Exception as e:
+            logger.info(f"TuShare 不可用({e})，使用 Mock 数据")
 
-        rows = []
-        price = base_price
-        for dt in trading_days:
-            change = rng.gauss(0.0002, 0.02)
-            close = price * (1 + change)
-            close = max(close, price * 0.5)
-            open_p = price * (1 + rng.gauss(0, 0.005))
-            high = max(open_p, close) * (1 + abs(rng.gauss(0, 0.008)))
-            low = min(open_p, close) * (1 - abs(rng.gauss(0, 0.008)))
-            vol = int(abs(rng.gauss(50_000_000, 20_000_000)))
-            rows.append({
-                "code": codes[0], "date": dt,
-                "open": round(open_p, 2), "high": round(high, 2),
-                "low": round(low, 2), "close": round(close, 2),
-                "volume": vol, "amount": round(close * vol, 2),
-            })
-            price = close
+        # ---- 回退 Mock 数据 ----
+        if provider is None:
+            rng = random.Random(42)
+            base_price = 35.0
+            trading_days = []
+            d = start
+            while d <= end:
+                if d.weekday() < 5:
+                    trading_days.append(d)
+                d += timedelta(days=1)
 
-        import pandas as pd
-        mock_df = pd.DataFrame(rows)
+            rows = []
+            price = base_price
+            for dt in trading_days:
+                change = rng.gauss(0.0002, 0.02)
+                close = price * (1 + change)
+                close = max(close, price * 0.5)
+                open_p = price * (1 + rng.gauss(0, 0.005))
+                high = max(open_p, close) * (1 + abs(rng.gauss(0, 0.008)))
+                low = min(open_p, close) * (1 - abs(rng.gauss(0, 0.008)))
+                vol = int(abs(rng.gauss(50_000_000, 20_000_000)))
+                rows.append({
+                    "code": codes[0], "date": dt,
+                    "open": round(open_p, 2), "high": round(high, 2),
+                    "low": round(low, 2), "close": round(close, 2),
+                    "volume": vol, "amount": round(close * vol, 2),
+                })
+                price = close
 
-        class MockProvider:
-            name = "mock"
-            def get_daily(self, code, start, end, adjust="qfq"):
-                df = mock_df[(mock_df["date"] >= start) & (mock_df["date"] <= end)]
-                return df.sort_values("date").reset_index(drop=True)
-            def get_minute(self, code, date_, freq="1"):
-                return pd.DataFrame()
-            def get_stock_info(self, code):
-                return {"code": code, "name": "测试股票"}
-            def get_stock_list(self):
-                return pd.DataFrame()
+            import pandas as pd
+            mock_df = pd.DataFrame(rows)
+
+            class MockProvider:
+                name = "mock"
+                def get_daily(self, code, start, end, adjust="qfq"):
+                    df = mock_df[(mock_df["date"] >= start) & (mock_df["date"] <= end)]
+                    return df.sort_values("date").reset_index(drop=True)
+                def get_minute(self, code, date_, freq="1"):
+                    return pd.DataFrame()
+                def get_stock_info(self, code):
+                    return {"code": code, "name": "测试股票"}
+                def get_stock_list(self):
+                    return pd.DataFrame()
+
+            provider = MockProvider()
 
         # ---- 运行回测 ----
         strategy = MACrossStrategy(fast_period=5, slow_period=20)
         wrapper = StrategyWrapper(strategy)
-        engine = BacktestEngine(strategy=wrapper, data_provider=MockProvider(), initial_cash=100_000.0)
+        engine = BacktestEngine(strategy=wrapper, data_provider=provider, initial_cash=100_000.0)
         recorder = engine.run(codes=codes, start=start, end=end)
         stats = Analyzer.analyze(recorder)
 
@@ -293,6 +312,7 @@ def _run_default_backtest():
             ]
 
         summary = {
+            "data_source": data_source_used,
             "strategy": "MA_Cross_5_20",
             "codes": codes,
             "start_date": str(start),
