@@ -12,12 +12,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Optional, Callable
+from typing import Optional
 
 from core.types import (
-    Order, OrderSide, OrderType, OrderStatus,
-    Fill, Position, Account, Bar, Tick,
+    Order, Fill, Position, Account, Bar, Tick,
 )
 
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from core.types import Signal, Account, RiskAlert, Position
+from core.types import Signal, Account
 
 logger = logging.getLogger(__name__)
 

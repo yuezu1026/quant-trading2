@@ -9,12 +9,11 @@
 from datetime import date, timedelta
 from typing import Optional
 
-import pytest
+import pandas as pd
 
 from core.types import Bar, Account, OrderSide
 from strategy import StrategyWrapper, Strategy
-from strategy.indicators import sma, cross_up, cross_down
-from backtest import BacktestEngine, Analyzer, Recorder
+from backtest import BacktestEngine, Analyzer
 from risk.manager import RiskManager, MaxPositionRule
 
 
@@ -257,7 +256,7 @@ class TestRiskManagerIntegration:
         rm = RiskManager()
         rm.add_rule(MaxPositionRule(ratio=0.3))
 
-        from core.types import Signal, Account, Position
+        from core.types import Signal, Account
 
         account = Account(
             cash=100_000.0,
@@ -279,8 +278,6 @@ class TestRiskManagerIntegration:
 # ============================================================================
 # Mock 数据源
 # ============================================================================
-
-import pandas as pd
 
 
 class MockDataProvider:

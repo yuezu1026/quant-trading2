@@ -18,7 +18,6 @@ from datetime import date, timedelta
 
 import pandas as pd
 
-from core.types import Bar
 from strategy import StrategyWrapper, MACrossStrategy
 from backtest import BacktestEngine, Analyzer
 
@@ -180,13 +179,13 @@ def main():
     # 6. 显示最近成交
     fills_df = recorder.to_fills_df()
     if not fills_df.empty:
-        print(f"\n最近5笔成交:")
+        print("\n最近5笔成交:")
         print(fills_df.tail(5).to_string(index=False))
 
     # 7. 资产曲线摘要
     daily_df = recorder.to_daily_df()
     if not daily_df.empty:
-        print(f"\n资产曲线:")
+        print("\n资产曲线:")
         print(f"  起始资金: Y{daily_df['total_asset'].iloc[0]:,.2f}")
         print(f"  最终资产: Y{daily_df['total_asset'].iloc[-1]:,.2f}")
         print(f"  最高资产: Y{daily_df['total_asset'].max():,.2f}")

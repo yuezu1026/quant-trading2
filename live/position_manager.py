@@ -10,11 +10,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional
 
 from core.types import (
-    OrderSide, Position, Fill, Account,
+    OrderSide, Position, Fill,
 )
 
 logger = logging.getLogger(__name__)

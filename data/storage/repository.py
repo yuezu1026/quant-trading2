@@ -12,7 +12,7 @@ import pandas as pd
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import Session
 
-from .models import Base, DailyKline, MinuteKline, StockInfo, TradeRecord
+from .models import Base, DailyKline, StockInfo, TradeRecord
 
 DAILY_COLUMNS = ["code", "date", "open", "high", "low", "close", "volume", "amount"]
 

@@ -13,9 +13,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from core.types import Bar, Signal, Account, Fill
+from core.types import Bar, Signal, Account
 from strategy.base import Strategy
-from strategy.indicators import sma, cross_up, cross_down
+from strategy.indicators import sma
 
 
 class MACrossStrategy(Strategy):

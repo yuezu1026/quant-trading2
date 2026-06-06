@@ -3,14 +3,12 @@
 
 运行: python -m pytest tests/ -v
 """
-import io
-from datetime import date, datetime
+from datetime import date
 
 import pytest
 
 from core.types import (
-    Bar, Signal, Order, Fill, Position, Account,
-    OrderSide, OrderType, OrderStatus, Event, EventType,
+    Bar, Signal, Order, Position, OrderSide, OrderStatus, Event, EventType,
 )
 from core.event_bus import EventBus
 

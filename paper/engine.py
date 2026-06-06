@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import date, datetime
 from typing import Optional, Callable
 
 from core.types import (
@@ -145,7 +144,7 @@ class PaperEngine:
         price: Optional[float] = None,
     ) -> Order:
         """手动下单（Web API调用）"""
-        from core.types import OrderSide, OrderType
+        from core.types import OrderSide
 
         side_enum = OrderSide.BUY if side == "buy" else OrderSide.SELL
         order_type = OrderType.LIMIT if price else OrderType.MARKET
@@ -226,7 +225,7 @@ class PaperEngine:
         try:
             self._strategy.on_fill(fill, self._account.account)
         except Exception:
-            logger.exception(f"策略 on_fill 异常")
+            logger.exception("策略 on_fill 异常")
 
     # ------------------------------------------------------------------
     # 属性

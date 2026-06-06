@@ -7,11 +7,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
-from typing import Optional
+from datetime import datetime
 
 from core.types import (
-    OrderSide, OrderType, OrderStatus,
+    OrderSide, OrderStatus,
     Order, Fill, Position, Account,
 )
 

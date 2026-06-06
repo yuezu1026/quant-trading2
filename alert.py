@@ -14,11 +14,10 @@
 """
 from __future__ import annotations
 
-import json
 import logging
 import threading
 from datetime import datetime
-from typing import Optional, Callable
+from typing import Optional
 
 import requests
 

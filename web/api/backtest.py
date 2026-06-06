@@ -39,7 +39,6 @@ class BacktestStatus(BaseModel):
 async def run_backtest(req: BacktestRequest, tasks: BackgroundTasks) -> dict:
     """启动回测任务"""
     import uuid
-    import asyncio
 
     task_id = f"bt_{uuid.uuid4().hex[:8]}"
     _backtest_tasks[task_id] = {

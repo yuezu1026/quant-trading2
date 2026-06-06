@@ -20,10 +20,10 @@ import threading
 from datetime import datetime
 from typing import Optional
 
-from .base import TradingGateway, GatewayCallback
+from .base import TradingGateway
 from core.types import (
     Order, OrderSide, OrderType, OrderStatus,
-    Fill, Position, Account, Bar,
+    Fill, Position, Account, Tick,
 )
 
 logger = logging.getLogger(__name__)

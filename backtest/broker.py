@@ -15,7 +15,7 @@ from datetime import datetime
 
 from core.types import (
     Order, OrderSide, OrderType, OrderStatus,
-    Fill, Bar, Position, Account, Signal,
+    Fill, Bar, Position, Account,
 )
 
 logger = logging.getLogger(__name__)

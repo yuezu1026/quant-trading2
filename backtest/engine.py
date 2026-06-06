@@ -20,11 +20,11 @@ from typing import Optional
 import pandas as pd
 
 from core.types import (
-    Bar, Order, OrderType, OrderStatus,
+    Bar, Order, OrderStatus,
     Event, EventType, Account, Signal,
 )
 from core.event_bus import EventBus
-from data import Repository, DataProvider, TradingCalendar
+from data import DataProvider, TradingCalendar
 from strategy.base import StrategyWrapper
 from .broker import SimulatedBroker
 from .recorder import Recorder

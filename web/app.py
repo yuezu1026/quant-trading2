@@ -27,6 +27,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """应用生命周期"""
     logger.info("Quant Trading API 启动")
+    # 启动仪表盘模拟器
+    from .api.dashboard import start_simulator
+    start_simulator()
+    logger.info("仪表盘模拟器已启动")
     yield
     logger.info("Quant Trading API 关闭")
 
@@ -102,8 +106,12 @@ async def index():
             <div class="value" id="cash">¥--</div>
         </div>
         <div class="card">
-            <h3>累计盈亏</h3>
+            <h3>已实现盈亏</h3>
             <div class="value" id="pnl">¥--</div>
+        </div>
+        <div class="card">
+            <h3>浮动盈亏</h3>
+            <div class="value" id="unrealized_pnl">¥--</div>
         </div>
         <div class="card">
             <h3>系统状态</h3>
@@ -117,13 +125,18 @@ async def index():
     </div>
 
     <script>
+        // 资产曲线数据缓存（保留最近 120 个点）
+        const MAX_POINTS = 120;
+        const dates = [];
+        const values = [];
+
         const chart = echarts.init(document.getElementById('equity_chart'));
         chart.setOption({
             backgroundColor: 'transparent',
-            grid: { left: 60, right: 20, top: 20, bottom: 30 },
-            xAxis: { type: 'category', data: [],
+            grid: { left: 65, right: 20, top: 20, bottom: 30 },
+            xAxis: { type: 'category', data: dates,
                 axisLine: { lineStyle: { color: '#475569' } },
-                axisLabel: { color: '#94a3b8' }
+                axisLabel: { color: '#94a3b8', fontSize: 10 }
             },
             yAxis: { type: 'value',
                 axisLine: { lineStyle: { color: '#475569' } },
@@ -132,7 +145,7 @@ async def index():
             },
             series: [{
                 type: 'line',
-                data: [],
+                data: values,
                 smooth: true,
                 lineStyle: { color: '#38bdf8', width: 2 },
                 areaStyle: { color: 'rgba(56,189,248,0.1)' },
@@ -140,6 +153,20 @@ async def index():
             }],
             animation: true,
         });
+
+        function addDataPoint(asset) {
+            const now = new Date();
+            const time = now.getHours().toString().padStart(2,'0') + ':'
+                       + now.getMinutes().toString().padStart(2,'0') + ':'
+                       + now.getSeconds().toString().padStart(2,'0');
+            dates.push(time);
+            values.push(asset);
+            if (dates.length > MAX_POINTS) { dates.shift(); values.shift(); }
+            chart.setOption({
+                xAxis: { data: dates },
+                series: [{ data: values }]
+            });
+        }
 
         // WebSocket 连接
         const ws = new WebSocket(`ws://${location.host}/api/dashboard/ws`);
@@ -152,9 +179,12 @@ async def index():
                 const pnlEl = document.getElementById('pnl');
                 pnlEl.innerText = (pnl >= 0 ? '+' : '') + '¥' + pnl.toLocaleString();
                 pnlEl.className = 'value ' + (pnl >= 0 ? 'positive' : 'negative');
-            }
-            if (msg.channel === 'alert') {
-                // 可以添加 toast 通知
+                const upnl = msg.data.unrealized_pnl || 0;
+                const upnlEl = document.getElementById('unrealized_pnl');
+                upnlEl.innerText = (upnl >= 0 ? '+' : '') + '¥' + upnl.toLocaleString();
+                upnlEl.className = 'value ' + (upnl >= 0 ? 'positive' : 'negative');
+                // 更新资产曲线
+                addDataPoint(msg.data.total_asset);
             }
         };
         ws.onopen = () => {
@@ -164,16 +194,26 @@ async def index():
             document.getElementById('status').innerHTML = '<span class="status-dot stopped"></span>已断开';
         };
 
-        // 定时拉取概览
+        // 定时拉取概览 + 更新曲线 (每3秒)
         setInterval(async () => {
             try {
                 const res = await fetch('/api/dashboard/overview');
                 const data = await res.json();
                 document.getElementById('total_asset').innerText = '¥' + (data.total_asset || 0).toLocaleString();
                 document.getElementById('cash').innerText = '¥' + (data.cash || 0).toLocaleString();
+                const pnl2 = data.realized_pnl || 0;
+                const pnlEl2 = document.getElementById('pnl');
+                pnlEl2.innerText = (pnl2 >= 0 ? '+' : '') + '¥' + pnl2.toLocaleString();
+                pnlEl2.className = 'value ' + (pnl2 >= 0 ? 'positive' : 'negative');
+                const upnl2 = data.unrealized_pnl || 0;
+                const upnlEl2 = document.getElementById('unrealized_pnl');
+                upnlEl2.innerText = (upnl2 >= 0 ? '+' : '') + '¥' + upnl2.toLocaleString();
+                upnlEl2.className = 'value ' + (upnl2 >= 0 ? 'positive' : 'negative');
                 document.getElementById('status').innerHTML =
                     '<span class="status-dot ' + (data.is_running ? 'running' : 'stopped') + '"></span>' +
                     (data.is_running ? '运行中' : '已停止');
+                // 直接更新资产曲线
+                addDataPoint(data.total_asset);
             } catch(e) {}
         }, 3000);
     </script>

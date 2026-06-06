@@ -4,13 +4,11 @@
 运行: python -m pytest tests/test_backtest.py -v
 """
 from datetime import date
-from unittest.mock import Mock, patch
 
 import pytest
 
 from core.types import (
-    Bar, Order, OrderSide, OrderType, OrderStatus,
-    Account, Signal,
+    Bar, Order, OrderSide, OrderStatus,
 )
 from backtest.broker import SimulatedBroker
 

@@ -5,7 +5,6 @@ SQLAlchemy 数据模型
 """
 from __future__ import annotations
 
-from datetime import date
 
 from sqlalchemy import (
     Column,
