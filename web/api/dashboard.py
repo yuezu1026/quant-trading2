@@ -374,6 +374,19 @@ def set_paper_engine(engine) -> None:
 # API
 # ============================================================================
 
+@router.get("/tushare_calls")
+async def get_tushare_calls() -> dict:
+    """获取最近10次 TuShare API 调用记录"""
+    try:
+        from data.providers.tushare import get_call_count, get_call_log
+        return {
+            "total": get_call_count(),
+            "calls": get_call_log(10),
+        }
+    except Exception:
+        return {"total": 0, "calls": []}
+
+
 @router.get("/config")
 async def get_config() -> dict:
     """获取系统配置：数据源、策略信息"""

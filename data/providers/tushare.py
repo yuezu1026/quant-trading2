@@ -94,13 +94,30 @@ def _code_to_ts(code: str) -> str:
 # TuShare Provider
 # ------------------------------------------------------------------
 
-# 全局 API 调用计数器
+# 全局调用记录
 _call_count: int = 0
+_call_log: list[dict] = []  # {endpoint, uri, time}
 
 
 def get_call_count() -> int:
-    """获取 TuShare API 累计调用次数"""
     return _call_count
+
+
+def get_call_log(limit: int = 10) -> list[dict]:
+    return _call_log[-limit:]
+
+
+def _record_call(endpoint: str, uri: str = "") -> None:
+    global _call_count
+    _call_count += 1
+    from datetime import datetime
+    _call_log.append({
+        "endpoint": endpoint,
+        "uri": uri,
+        "time": datetime.now().strftime("%H:%M:%S"),
+    })
+    if len(_call_log) > 200:
+        _call_log[:] = _call_log[-200:]
 
 
 class TuShareProvider(DataProvider):
@@ -150,6 +167,7 @@ class TuShareProvider(DataProvider):
         try:
             if adj_param:
                 # 使用复权接口
+                _record_call("daily", f"ts_code={ts_code}&start={start}&end={end}")
                 df = self.pro.query(
                     "daily",
                     ts_code=ts_code,
@@ -157,6 +175,7 @@ class TuShareProvider(DataProvider):
                     end_date=end.strftime("%Y%m%d"),
                 )
                 # 复权因子
+                _record_call("adj_factor", f"ts_code={ts_code}")
                 adj_df = self.pro.adj_factor(
                     ts_code=ts_code,
                     start_date=start.strftime("%Y%m%d"),
@@ -173,6 +192,7 @@ class TuShareProvider(DataProvider):
                         for col in ["open", "high", "low", "close"]:
                             df[col] = df[col] * df["adj_factor"]
             else:
+                _record_call("daily", f"ts_code={ts_code}&start={start}&end={end}")
                 df = self.pro.daily(
                     ts_code=ts_code,
                     start_date=start.strftime("%Y%m%d"),
@@ -217,6 +237,7 @@ class TuShareProvider(DataProvider):
         ts_code = _code_to_ts(code)
 
         try:
+            _record_call("mins", f"ts_code={ts_code}&freq={freq}min&date={date_}")
             df = self.pro.mins(
                 ts_code=ts_code,
                 freq=f"{freq}min",
@@ -252,6 +273,7 @@ class TuShareProvider(DataProvider):
     def get_stock_info(self, code: str) -> dict:
         ts_code = _code_to_ts(code)
         try:
+            _record_call("stock_basic", f"ts_code={ts_code}")
             df = self.pro.stock_basic(
                 ts_code=ts_code,
                 fields="ts_code,name,area,industry,list_date",
@@ -271,6 +293,7 @@ class TuShareProvider(DataProvider):
 
     def get_stock_list(self) -> pd.DataFrame:
         try:
+            _record_call("stock_basic", "exchange=&list_status=L")
             df = self.pro.stock_basic(
                 exchange="",
                 list_status="L",

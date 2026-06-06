@@ -146,6 +146,18 @@ async def index():
         </div>
     </div>
 
+    <div class="chart-container" style="margin-top:0;">
+        <h3>📡 TuShare API 调用历史（最近 <span id="call_total">0</span> 次）</h3>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+            <thead><tr style="color:#94a3b8;font-size:12px;text-align:left;border-bottom:1px solid #334155;">
+                <th style="padding:6px 10px;">Endpoint</th>
+                <th style="padding:6px 10px;">URI / 参数</th>
+                <th style="padding:6px 10px;">时间</th>
+            </tr></thead>
+            <tbody id="call_tbody"><tr><td colspan="3" style="color:#64748b;padding:12px;">加载中...</td></tr></tbody>
+        </table>
+    </div>
+
     <div class="chart-container">
         <h3>资产曲线</h3>
         <div class="chart" id="equity_chart"></div>
@@ -257,6 +269,26 @@ async def index():
             } catch(e) {}
         }
         loadBacktest();
+
+        // 加载 TuShare 调用历史
+        async function loadCalls() {
+            try {
+                const res = await fetch('/api/dashboard/tushare_calls');
+                const json = await res.json();
+                const el = document.getElementById('call_log');
+                if (json.calls && json.calls.length > 0) {
+                    let rows = '';
+                    for (let i = json.calls.length - 1; i >= 0; i--) {
+                        const c = json.calls[i];
+                        rows += '<tr><td style="color:#38bdf8;">' + c.endpoint + '</td><td style="color:#94a3b8;font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (c.uri || '-') + '</td><td style="color:#64748b;">' + c.time + '</td></tr>';
+                    }
+                    document.getElementById('call_tbody').innerHTML = rows;
+                    document.getElementById('call_total').innerText = json.total;
+                }
+            } catch(e) {}
+        }
+        loadCalls();
+        setInterval(loadCalls, 5000);
 
         // WebSocket 连接
         const ws = new WebSocket(`ws://${location.host}/api/dashboard/ws`);
