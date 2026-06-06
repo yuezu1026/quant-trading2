@@ -311,9 +311,15 @@ def _run_default_backtest():
                 for _, row in daily_df.tail(90).iterrows()
             ]
 
+        # 股票代码→名称映射
+        stock_names = {"600036.SH": "招商银行", "000001.SZ": "平安银行", "600519.SH": "贵州茅台",
+                       "600000.SH": "浦发银行", "000858.SZ": "五粮液", "601318.SH": "中国平安"}
+        stock_list = [{"code": c, "name": stock_names.get(c, c)} for c in codes]
+
         summary = {
             "data_source": data_source_used,
             "strategy": "MA_Cross_5_20",
+            "stocks": stock_list,
             "codes": codes,
             "start_date": str(start),
             "end_date": str(end),

@@ -127,6 +127,12 @@ async def index():
         </div>
     </div>
 
+    <div class="grid" style="padding-top:0;">
+        <div class="card" style="grid-column:1/-1;">
+            <h3>📌 回测标的</h3>
+            <div class="value" id="bt_stocks" style="font-size:16px;">--</div>
+        </div>
+    </div>
     <div class="grid" id="backtest_cards" style="padding-top:0;">
         <div class="card">
             <h3>📈 回测年化收益</h3>
@@ -248,6 +254,12 @@ async def index():
                     document.getElementById('bt_drawdown').innerText = (d.max_drawdown * 100).toFixed(1) + '%';
                     document.getElementById('bt_drawdown').className = 'value negative';
                     document.getElementById('bt_winrate').innerText = (d.win_rate * 100).toFixed(1) + '%';
+                    // 股票标的
+                    if (d.stocks) {
+                        let stockHtml = '';
+                        d.stocks.forEach(s => { stockHtml += '<span style="color:#38bdf8;">' + s.code + '</span> <span style="color:#f1f5f9;">' + s.name + '</span>  '; });
+                        document.getElementById('bt_stocks').innerHTML = stockHtml;
+                    }
                     // 更新图表
                     if (d.equity_curve && d.equity_curve.length > 0) {
                         const btDates = d.equity_curve.map(p => p.date);
