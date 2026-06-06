@@ -60,3 +60,5 @@ config/settings.local.yaml
 # Jupyter
 .ipynb_checkpoints/
 .claude/
+/*.tar
+/*.tar

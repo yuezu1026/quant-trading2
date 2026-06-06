@@ -311,6 +311,33 @@ def _run_default_backtest():
                 for _, row in daily_df.tail(90).iterrows()
             ]
 
+        # ---- 提取K线数据（最近90天）----
+        klines = []
+        trades = []
+        if provider is not None:
+            # 获取原始数据
+            raw_df = provider.get_daily(codes[0], start, end)
+            if not raw_df.empty:
+                raw_tail = raw_df.tail(90)
+                for _, row in raw_tail.iterrows():
+                    klines.append({
+                        "date": str(row["date"]),
+                        "open": round(float(row["open"]), 2),
+                        "close": round(float(row["close"]), 2),
+                        "low": round(float(row["low"]), 2),
+                        "high": round(float(row["high"]), 2),
+                    })
+        # 提取买卖点
+        fills_df = recorder.to_fills_df()
+        if not fills_df.empty:
+            for _, f in fills_df.tail(50).iterrows():
+                trades.append({
+                    "date": str(f.get("fill_time", ""))[:10],
+                    "side": str(f["side"]),
+                    "price": round(float(f["price"]), 2),
+                    "quantity": int(f["quantity"]),
+                })
+
         # 股票代码→名称映射
         stock_names = {"600036.SH": "招商银行", "000001.SZ": "平安银行", "600519.SH": "贵州茅台",
                        "600000.SH": "浦发银行", "000858.SZ": "五粮液", "601318.SH": "中国平安"}
@@ -331,6 +358,8 @@ def _run_default_backtest():
             "trade_count": stats.trade_count,
             "win_rate": round(stats.win_rate, 4),
             "equity_curve": equity_curve,
+            "klines": klines,
+            "trades": trades,
         }
 
         # ---- 存入数据库 ----

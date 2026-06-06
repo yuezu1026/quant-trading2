@@ -165,6 +165,11 @@ async def index():
     </div>
 
     <div class="chart-container">
+        <h3>K线图 + 买卖点</h3>
+        <div class="chart" id="kline_chart" style="height:500px;"></div>
+    </div>
+
+    <div class="chart-container">
         <h3>资产曲线</h3>
         <div class="chart" id="equity_chart"></div>
     </div>
@@ -280,6 +285,43 @@ async def index():
                 }
             } catch(e) {}
         }
+        // K线图
+        const klineChart = echarts.init(document.getElementById('kline_chart'));
+        async function loadKline() {
+            try {
+                const res = await fetch('/api/dashboard/backtest_summary');
+                const json = await res.json();
+                if (json.status === 'ok' && json.data && json.data.klines) {
+                    const d = json.data;
+                    const dates = d.klines.map(k => k.date);
+                    const ohlc = d.klines.map(k => [k.open, k.close, k.low, k.high]);
+                    const buys = (d.trades || []).filter(t => t.side === 'buy').map(t => ({
+                        coord: [t.date, t.price], value: t.price, symbol: 'triangle', symbolSize: 14,
+                        itemStyle: { color: '#ef4444' }, label: { show: true, position: 'bottom', formatter: 'B ' + t.quantity, color: '#ef4444', fontSize: 10 }
+                    }));
+                    const sells = (d.trades || []).filter(t => t.side === 'sell').map(t => ({
+                        coord: [t.date, t.price], value: t.price, symbol: 'triangle', symbolRotate: 180, symbolSize: 14,
+                        itemStyle: { color: '#22c55e' }, label: { show: true, position: 'top', formatter: 'S ' + t.quantity, color: '#22c55e', fontSize: 10 }
+                    }));
+                    klineChart.setOption({
+                        backgroundColor: 'transparent',
+                        grid: { left: 70, right: 20, top: 20, bottom: 40 },
+                        tooltip: { trigger: 'axis' },
+                        xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#475569' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
+                        yAxis: { type: 'value', scale: true, axisLine: { lineStyle: { color: '#475569' } }, axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+                        series: [
+                            { name: 'K线', type: 'candlestick', data: ohlc,
+                                itemStyle: { color: '#ef4444', color0: '#22c55e', borderColor: '#ef4444', borderColor0: '#22c55e' } },
+                            { name: '买入', type: 'scatter', data: buys, z: 10 },
+                            { name: '卖出', type: 'scatter', data: sells, z: 10 },
+                        ],
+                    });
+                }
+            } catch(e) {}
+        }
+        loadKline();
+        setInterval(loadKline, 30000);
+
         loadBacktest();
 
         // 加载 TuShare 调用历史

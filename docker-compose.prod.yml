@@ -1,0 +1,64 @@
+# 生产环境部署 — 腾讯云 43.153.229.106
+# 使用方式:
+#   1. docker load -i quant-app.tar
+#   2. export TUSHARE_TOKEN="your_token"
+#   3. docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  # ==========================================================================
+  # 量化交易应用
+  # ==========================================================================
+  app:
+    image: quant-trading-app:latest
+    container_name: quant-app
+    restart: unless-stopped
+    ports:
+      - "80:8000"
+    environment:
+      - TUSHARE_TOKEN=${TUSHARE_TOKEN}
+      - DATABASE_URL=postgresql://quant:quant@db:5432/quant
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn web.app:app --host 0.0.0.0 --port 8000
+
+  # ==========================================================================
+  # PostgreSQL 数据库
+  # ==========================================================================
+  db:
+    image: postgres:15-alpine
+    container_name: quant-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: quant
+      POSTGRES_USER: quant
+      POSTGRES_PASSWORD: quant
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quant -d quant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # Redis 缓存
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: quant-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_data:
+  redis_data:
