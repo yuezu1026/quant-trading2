@@ -287,9 +287,18 @@ async def get_config() -> dict:
     # 是否使用 Docker
     in_docker = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER", "")
 
+    # TuShare 调用次数
+    tushare_calls = 0
+    try:
+        from data.providers.tushare import get_call_count
+        tushare_calls = get_call_count()
+    except Exception:
+        pass
+
     return {
         "data_source": data_source,
         "tushare_configured": tushare_ok,
+        "tushare_calls": tushare_calls,
         "environment": "docker" if in_docker else "local",
         "strategies": strategies,
     }

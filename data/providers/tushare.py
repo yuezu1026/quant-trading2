@@ -94,6 +94,15 @@ def _code_to_ts(code: str) -> str:
 # TuShare Provider
 # ------------------------------------------------------------------
 
+# 全局 API 调用计数器
+_call_count: int = 0
+
+
+def get_call_count() -> int:
+    """获取 TuShare API 累计调用次数"""
+    return _call_count
+
+
 class TuShareProvider(DataProvider):
     """TuShare 数据源适配器"""
 
@@ -106,6 +115,8 @@ class TuShareProvider(DataProvider):
     @property
     def pro(self):
         """延迟初始化 pro API"""
+        global _call_count
+        _call_count += 1
         if self._pro is None:
             import tushare as ts
 

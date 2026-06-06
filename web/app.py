@@ -185,7 +185,8 @@ async def index():
                 const dsEl = document.getElementById('data_source');
                 const dsIcon = cfg.tushare_configured ? '✅' : '⚠️';
                 const envLabel = cfg.environment === 'docker' ? '🐳 Docker' : '💻 本地';
-                dsEl.innerHTML = dsIcon + ' ' + cfg.data_source + '<br><small style="color:#94a3b8;">' + envLabel + '</small>';
+                const calls = cfg.tushare_calls || 0;
+                dsEl.innerHTML = dsIcon + ' ' + cfg.data_source + '<br><small style="color:#94a3b8;">' + envLabel + ' · API调用 ' + calls + '次</small>';
                 // 策略
                 const sEl = document.getElementById('strategy_info');
                 if (cfg.strategies && cfg.strategies.length > 0) {
