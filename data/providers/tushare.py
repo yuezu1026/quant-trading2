@@ -26,15 +26,22 @@ def _get_token() -> str:
     token = os.environ.get("TUSHARE_TOKEN", "")
     if token:
         return token
-    # 尝试从配置文件读取
+    # 尝试从配置文件读取 (优先 local 覆盖)
     try:
         import yaml
-        config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config", "settings.yaml")
-        config_path = os.path.normpath(config_path)
-        if os.path.exists(config_path):
-            with open(config_path, encoding="utf-8") as f:
-                cfg = yaml.safe_load(f)
-            token = cfg.get("data", {}).get("tushare_token", "")
+        base_dir = os.path.join(os.path.dirname(__file__), "..", "..", "config")
+        base_dir = os.path.normpath(base_dir)
+
+        # 先读主配置
+        token = ""
+        for cfg_name in ["settings.yaml", "settings.local.yaml"]:
+            cfg_path = os.path.join(base_dir, cfg_name)
+            if os.path.exists(cfg_path):
+                with open(cfg_path, encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f)
+                t = cfg.get("data", {}).get("tushare_token", "")
+                if t:
+                    token = t  # local 覆盖主配置
     except Exception:
         pass
     return token

@@ -3,7 +3,7 @@
 # 数据源
 data:
   provider: tushare          # akshare | efinance | tushare
-  tushare_token: ""          # TuShare token (https://tushare.pro)
+  tushare_token: ""          # 敏感信息，请在 config/settings.local.yaml 中配置
   cache_dir: ./data/cache    # 数据缓存目录
 
 # 数据库

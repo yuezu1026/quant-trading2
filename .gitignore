@@ -54,6 +54,9 @@ data/cache/
 .DS_Store
 Thumbs.db
 
+# Config secrets
+config/settings.local.yaml
+
 # Jupyter
 .ipynb_checkpoints/
 .claude/
