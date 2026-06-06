@@ -95,7 +95,7 @@ async def _run_backtest_task(task_id: str, req: BacktestRequest) -> None:
 
         from strategy import MACrossStrategy, StrategyWrapper
         from backtest import BacktestEngine, Analyzer
-        from data import AkShareProvider
+        from data import TuShareProvider, AkShareProvider
 
         # 动态选择策略
         if req.strategy_class == "MACrossStrategy":
@@ -104,7 +104,13 @@ async def _run_backtest_task(task_id: str, req: BacktestRequest) -> None:
             raise ValueError(f"未知策略: {req.strategy_class}")
 
         wrapper = StrategyWrapper(s)
-        provider = AkShareProvider()
+
+        # 优先 TuShare，回退 AkShare
+        try:
+            provider = TuShareProvider()
+            provider.get_daily(req.codes[0], req.start_date, req.start_date)
+        except Exception:
+            provider = AkShareProvider()
 
         engine = BacktestEngine(
             strategy=wrapper,

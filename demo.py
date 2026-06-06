@@ -6,7 +6,7 @@
     python demo.py
 
 流程:
-    1. 尝试从 AkShare 下载数据，失败则使用模拟数据
+    1. 尝试从 TuShare 下载数据，失败则尝试 AkShare，最后使用模拟数据
     2. 运行双均线策略回测
     3. 输出绩效报告
 """
@@ -123,20 +123,32 @@ def main():
     start = date(2023, 1, 1)
     end = date(2024, 12, 31)
 
-    # 1. 尝试 AkShare，失败则用模拟数据
+    # 1. 尝试 TuShare，失败则尝试 AkShare，再失败用模拟数据
+    provider = None
+
+    # 优先 TuShare
     try:
-        from data import AkShareProvider
-        provider = AkShareProvider()
-        logger.info("数据源: AkShare (在线)")
-        # 快速测试连接
+        from data import TuShareProvider
+        provider = TuShareProvider()
         test_df = provider.get_daily(codes[0], start, start + timedelta(days=5))
         if test_df.empty:
-            raise RuntimeError("AkShare 返回空数据")
-    except Exception as e:
-        logger.warning(f"AkShare 不可用 ({e})，切换为模拟数据")
-        mock_df = generate_mock_data(codes, start, end)
-        provider = MockDataProvider(mock_df)
-        logger.info("数据源: Mock (离线模拟)")
+            raise RuntimeError("TuShare 返回空数据")
+        logger.info("数据源: TuShare (在线)")
+    except Exception as e1:
+        logger.warning(f"TuShare 不可用 ({e1})，尝试 AkShare...")
+        # 回退 AkShare
+        try:
+            from data import AkShareProvider
+            provider = AkShareProvider()
+            test_df = provider.get_daily(codes[0], start, start + timedelta(days=5))
+            if test_df.empty:
+                raise RuntimeError("AkShare 返回空数据")
+            logger.info("数据源: AkShare (在线)")
+        except Exception as e2:
+            logger.warning(f"AkShare 也不可用 ({e2})，切换为模拟数据")
+            mock_df = generate_mock_data(codes, start, end)
+            provider = MockDataProvider(mock_df)
+            logger.info("数据源: Mock (离线模拟)")
 
     # 2. 创建策略
     strategy = MACrossStrategy(

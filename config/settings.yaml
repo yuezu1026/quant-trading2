@@ -2,7 +2,8 @@
 
 # 数据源
 data:
-  provider: akshare          # akshare | efinance | tushare
+  provider: tushare          # akshare | efinance | tushare
+  tushare_token: ""          # TuShare token (https://tushare.pro)
   cache_dir: ./data/cache    # 数据缓存目录
 
 # 数据库
