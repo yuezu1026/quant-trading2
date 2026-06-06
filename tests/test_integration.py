@@ -62,6 +62,8 @@ def generate_price_series(
 class TestSimpleStrategy(Strategy):
     """简单测试策略：价格连续上涨2天买入，连续下跌2天卖出"""
 
+    __test__ = False  # 非测试类，避免 pytest 收集
+
     def __init__(self):
         super().__init__(name="test_simple")
         self._prev_close: Optional[float] = None

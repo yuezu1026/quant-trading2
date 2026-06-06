@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date as _date, datetime as _datetime
 from enum import Enum
 from typing import Optional
 
@@ -56,7 +56,7 @@ class EventType(str, Enum):
 class Bar(BaseModel):
     """单根K线数据"""
     code: str = Field(..., description="股票代码，如 600000.SH")
-    date: date = Field(..., description="交易日期")
+    date: _date = Field(..., description="交易日期")
     time: Optional[str] = Field(default=None, description="日内时间 HH:MM:SS")
     open: float
     high: float
@@ -94,7 +94,7 @@ class Bar(BaseModel):
 class Tick(BaseModel):
     """逐笔/快照数据"""
     code: str
-    datetime: datetime
+    datetime: _datetime
     price: float
     volume: float
     bid1: float = 0.0
@@ -136,8 +136,8 @@ class Order(BaseModel):
     avg_fill_price: float = 0.0   # 成交均价
     order_type: OrderType = OrderType.LIMIT
     status: OrderStatus = OrderStatus.PENDING
-    create_time: datetime = Field(default_factory=datetime.now)
-    update_time: Optional[datetime] = None
+    create_time: _datetime = Field(default_factory=_datetime.now)
+    update_time: Optional[_datetime] = None
     signal: Optional[Signal] = None  # 关联的信号
 
     @property
@@ -159,7 +159,7 @@ class Fill(BaseModel):
     price: float
     commission: float = 0.0    # 佣金
     tax: float = 0.0           # 印花税
-    fill_time: datetime = Field(default_factory=datetime.now)
+    fill_time: _datetime = Field(default_factory=_datetime.now)
 
 
 class Position(BaseModel):
@@ -193,7 +193,7 @@ class RiskAlert(BaseModel):
     rule: str
     message: str
     severity: str = "warning"  # warning / critical
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: _datetime = Field(default_factory=_datetime.now)
 
 
 # ============================================================================
@@ -204,4 +204,4 @@ class Event(BaseModel):
     """事件总线中的事件"""
     type: EventType
     data: Bar | Tick | Signal | Order | Fill | Account | RiskAlert | dict
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: _datetime = Field(default_factory=_datetime.now)
