@@ -117,6 +117,14 @@ async def index():
             <h3>系统状态</h3>
             <div class="value" id="status"><span class="status-dot stopped"></span>--</div>
         </div>
+        <div class="card">
+            <h3>数据源</h3>
+            <div class="value" id="data_source" style="font-size:14px;">--</div>
+        </div>
+        <div class="card">
+            <h3>当前策略</h3>
+            <div class="value" id="strategy_info" style="font-size:14px;">--</div>
+        </div>
     </div>
 
     <div class="chart-container">
@@ -167,6 +175,30 @@ async def index():
                 series: [{ data: values }]
             });
         }
+
+        // 加载系统配置（策略 + 数据源）
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/dashboard/config');
+                const cfg = await res.json();
+                // 数据源
+                const dsEl = document.getElementById('data_source');
+                const dsIcon = cfg.tushare_configured ? '✅' : '⚠️';
+                const envLabel = cfg.environment === 'docker' ? '🐳 Docker' : '💻 本地';
+                dsEl.innerHTML = dsIcon + ' ' + cfg.data_source + '<br><small style="color:#94a3b8;">' + envLabel + '</small>';
+                // 策略
+                const sEl = document.getElementById('strategy_info');
+                if (cfg.strategies && cfg.strategies.length > 0) {
+                    const s = cfg.strategies[0];
+                    const dot = s.is_running ? '<span class="status-dot running"></span>' : '<span class="status-dot stopped"></span>';
+                    sEl.innerHTML = dot + ' ' + s.class_name + '<br><small style="color:#94a3b8;">' + s.name + ' | params: ' + JSON.stringify(s.params) + '</small>';
+                } else {
+                    sEl.innerHTML = '未配置策略';
+                }
+            } catch(e) {}
+        }
+        loadConfig();
+        setInterval(loadConfig, 30000);
 
         // WebSocket 连接
         const ws = new WebSocket(`ws://${location.host}/api/dashboard/ws`);

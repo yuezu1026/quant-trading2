@@ -225,6 +225,76 @@ def set_paper_engine(engine) -> None:
 # API
 # ============================================================================
 
+@router.get("/config")
+async def get_config() -> dict:
+    """获取系统配置：数据源、策略信息"""
+    import os
+    import yaml
+
+    # 读取数据源配置
+    data_source = "unknown"
+    tushare_ok = False
+    config_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "config", "settings.yaml"
+    )
+    config_path = os.path.normpath(config_path)
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        data_source = cfg.get("data", {}).get("provider", "unknown")
+        # 检查 token 是否配置
+        token = cfg.get("data", {}).get("tushare_token", "")
+        if not token:
+            token = os.environ.get("TUSHARE_TOKEN", "")
+        # 尝试 local 配置
+        local_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "config", "settings.local.yaml"
+        )
+        local_path = os.path.normpath(local_path)
+        if os.path.exists(local_path):
+            with open(local_path, encoding="utf-8") as f:
+                local_cfg = yaml.safe_load(f)
+            local_token = local_cfg.get("data", {}).get("tushare_token", "")
+            if local_token:
+                token = local_token
+        tushare_ok = bool(token)
+    except Exception:
+        pass
+
+    # 策略信息
+    strategies = []
+    try:
+        from .strategy import _strategies
+        for name, s in _strategies.items():
+            strategies.append({
+                "name": name,
+                "class_name": s.get("class_name", ""),
+                "is_running": s.get("running", False),
+                "params": s.get("params", {}),
+            })
+    except Exception:
+        pass
+
+    # 如果没有注册策略，展示默认策略
+    if not strategies:
+        strategies = [{
+            "name": "MA_Cross_5_20",
+            "class_name": "MACrossStrategy",
+            "is_running": False,
+            "params": {"fast_period": 5, "slow_period": 20, "fixed_quantity": 0},
+        }]
+
+    # 是否使用 Docker
+    in_docker = os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER", "")
+
+    return {
+        "data_source": data_source,
+        "tushare_configured": tushare_ok,
+        "environment": "docker" if in_docker else "local",
+        "strategies": strategies,
+    }
+
+
 @router.get("/overview")
 async def get_overview() -> dict:
     """获取账户概览"""
