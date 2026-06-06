@@ -1,0 +1,85 @@
+version: "3.8"
+
+# Quant Trading — Docker Compose 部署
+#
+# 启动所有服务:
+#   docker-compose up -d
+#
+# 查看日志:
+#   docker-compose logs -f app
+#
+# 停止:
+#   docker-compose down
+
+services:
+  # ==========================================================================
+  # 量化交易应用
+  # ==========================================================================
+  app:
+    build: .
+    container_name: quant-trading-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://quant:quant@db:5432/quant
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config:/app/config:ro          # 配置文件 (只读)
+      - ./data/cache:/app/data/cache     # 数据缓存
+      - ./logs:/app/logs                 # 日志
+      - quant_data:/app/data             # 持久化数据
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python -c 'from data.calendar import TradingCalendar; TradingCalendar().load()' 2>/dev/null;
+             uvicorn web.app:app --host 0.0.0.0 --port 8000"
+
+  # ==========================================================================
+  # PostgreSQL 数据库 (生产环境)
+  # ==========================================================================
+  db:
+    image: postgres:15-alpine
+    container_name: quant-trading-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: quant
+      POSTGRES_USER: quant
+      POSTGRES_PASSWORD: quant
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quant -d quant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # Redis (行情缓存 + 任务队列)
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: quant-trading-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_data:
+  redis_data:
+  quant_data:

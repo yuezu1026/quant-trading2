@@ -1,0 +1,28 @@
+# 核心
+numpy>=1.24
+pandas>=2.0
+pydantic>=2.0
+pyyaml>=6.0
+
+# 数据
+akshare>=1.12
+efinance>=0.4
+
+# 数据库
+sqlalchemy>=2.0
+aiosqlite>=0.19
+
+# Web
+fastapi>=0.100
+uvicorn>=0.23
+websockets>=11
+
+# 任务调度
+apscheduler>=3.10
+
+# 可视化
+plotly>=5.15
+
+# 测试
+pytest>=7.4
+pytest-asyncio>=0.21

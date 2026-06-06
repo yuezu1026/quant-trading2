@@ -1,0 +1,49 @@
+# 量化交易系统 — 主配置文件
+
+# 数据源
+data:
+  provider: akshare          # akshare | efinance | tushare
+  cache_dir: ./data/cache    # 数据缓存目录
+
+# 数据库
+database:
+  url: sqlite:///quant.db    # SQLite (开发) / PostgreSQL (生产)
+
+# 回测
+backtest:
+  initial_cash: 100000.0      # 初始资金
+  commission_rate: 0.00025    # 佣金费率 (万2.5)
+  stamp_tax_rate: 0.001       # 印花税 (0.1%)
+
+# 风控
+risk:
+  max_position_ratio: 0.3     # 单票最大仓位
+  max_daily_loss: 0.05        # 日内最大亏损
+  stop_loss_pct: 0.10         # 硬止损比例
+
+# 实盘
+live:
+  gateway: qmt                # 券商网关: qmt | xtp
+  qmt:
+    exe_path: ""
+    account: ""
+    mini_qmt: false
+
+# Web 服务
+web:
+  host: 0.0.0.0
+  port: 8000
+  cors_origins:
+    - http://localhost:5173
+
+# 日志
+logging:
+  level: INFO
+  file: ./logs/quant.log
+  max_bytes: 10485760        # 10MB
+  backup_count: 5
+
+# 告警
+alert:
+  dingtalk_webhook: ""        # 钉钉机器人 Webhook
+  wechat_webhook: ""          # 企业微信机器人 Webhook
