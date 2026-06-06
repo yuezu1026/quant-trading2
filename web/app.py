@@ -303,17 +303,32 @@ async def index():
                         coord: [t.date, t.price], value: t.price, symbol: 'triangle', symbolRotate: 180, symbolSize: 14,
                         itemStyle: { color: '#22c55e' }, label: { show: true, position: 'top', formatter: 'S ' + t.quantity, color: '#22c55e', fontSize: 10 }
                     }));
+                    // 计算 MA5 / MA20
+                    const closes = d.klines.map(k => k.close);
+                    const calcMA = (arr, n) => arr.map((_, i, a) => {
+                        if (i < n - 1) return null;
+                        let sum = 0; for (let j = i - n + 1; j <= i; j++) sum += a[j];
+                        return +(sum / n).toFixed(2);
+                    });
+                    const ma5 = calcMA(closes, 5);
+                    const ma20 = calcMA(closes, 20);
+
                     klineChart.setOption({
                         backgroundColor: 'transparent',
                         grid: { left: 70, right: 20, top: 20, bottom: 40 },
                         tooltip: { trigger: 'axis' },
+                        legend: { data: ['K线','MA5','MA20','买','卖'], textStyle: { color: '#94a3b8' }, top: 0 },
                         xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#475569' } }, axisLabel: { color: '#94a3b8', fontSize: 10 } },
                         yAxis: { type: 'value', scale: true, axisLine: { lineStyle: { color: '#475569' } }, axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
                         series: [
                             { name: 'K线', type: 'candlestick', data: ohlc,
                                 itemStyle: { color: '#ef4444', color0: '#22c55e', borderColor: '#ef4444', borderColor0: '#22c55e' } },
-                            { name: '买入', type: 'scatter', data: buys, z: 10 },
-                            { name: '卖出', type: 'scatter', data: sells, z: 10 },
+                            { name: 'MA5', type: 'line', data: ma5, smooth: true, showSymbol: false,
+                                lineStyle: { color: '#fbbf24', width: 1.5 } },
+                            { name: 'MA20', type: 'line', data: ma20, smooth: true, showSymbol: false,
+                                lineStyle: { color: '#a78bfa', width: 1.5 } },
+                            { name: '买', type: 'scatter', data: buys, z: 10 },
+                            { name: '卖', type: 'scatter', data: sells, z: 10 },
                         ],
                     });
                 }
