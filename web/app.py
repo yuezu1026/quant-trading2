@@ -191,7 +191,8 @@ async def index():
                 if (cfg.strategies && cfg.strategies.length > 0) {
                     const s = cfg.strategies[0];
                     const dot = s.is_running ? '<span class="status-dot running"></span>' : '<span class="status-dot stopped"></span>';
-                    sEl.innerHTML = dot + ' ' + s.class_name + '<br><small style="color:#94a3b8;">' + s.name + ' | params: ' + JSON.stringify(s.params) + '</small>';
+                    const p = s.params;
+                    sEl.innerHTML = dot + ' <b>双均线交叉</b><br><small style="color:#94a3b8;">MA' + (p.fast_period||'?') + '/' + (p.slow_period||'?') + ' 金叉买入 · 死叉卖出</small>';
                 } else {
                     sEl.innerHTML = '未配置策略';
                 }
